@@ -111,6 +111,15 @@ async function startResize() {
   }
 }
 
+async function startWindowDrag() {
+  if (!('__TAURI_INTERNALS__' in window)) return;
+  try {
+    await getCurrentWindow().startDragging();
+  } catch (error) {
+    console.warn('Window drag failed', error);
+  }
+}
+
 function CardEditor({
   initial,
   placeholder,
@@ -272,12 +281,21 @@ export default function App() {
 
   return (
     <div className='nemu-card' style={cardStyle}>
-      <div className='header' data-tauri-drag-region>
+      <div
+        className='header'
+        onPointerDown={event => {
+          if (event.button !== 0) return;
+          const target = event.target as HTMLElement | null;
+          if (target?.closest('button, input, textarea, .settings-popover')) return;
+          event.preventDefault();
+          void startWindowDrag();
+        }}
+      >
         <div className='brand'>
           <div className='title'>Nemu</div>
           <div className='subtitle'>{status}</div>
         </div>
-        <div className='header-actions' data-tauri-drag-region='false'>
+        <div className='header-actions'>
           <button
             className={`icon-button pin-button${pinned ? ' active' : ''}`}
             type='button'
