@@ -17,6 +17,7 @@ type AgentInfo = {
   cwd: string;
   path: string;
   lastActiveMs: number;
+  firstSeenMs: number;
 };
 
 type AgentStatus = 'active' | 'recent' | 'idle' | 'dormant';

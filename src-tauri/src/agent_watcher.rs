@@ -24,6 +24,7 @@ pub struct AgentInfo {
     pub cwd: String,
     pub path: String,
     pub last_active_ms: u64,
+    pub first_seen_ms: u64,
 }
 
 type AgentMap = Arc<Mutex<HashMap<String, AgentInfo>>>;
@@ -109,10 +110,7 @@ impl AgentWatcher {
                     };
 
                     if let Some(info) = info {
-                        state_for_thread
-                            .lock()
-                            .unwrap()
-                            .insert(info.id.clone(), info);
+                        upsert(&state_for_thread, info);
                         changed = true;
                     }
                 }
@@ -130,7 +128,11 @@ impl AgentWatcher {
     pub fn snapshot(&self) -> Vec<AgentInfo> {
         let map = self.state.lock().unwrap();
         let mut vec: Vec<AgentInfo> = map.values().cloned().collect();
-        vec.sort_by(|a, b| b.last_active_ms.cmp(&a.last_active_ms));
+        vec.sort_by(|a, b| {
+        b.first_seen_ms
+            .cmp(&a.first_seen_ms)
+            .then_with(|| a.id.cmp(&b.id))
+    });
         vec
     }
 }
@@ -185,6 +187,7 @@ fn parse_claude(path: &Path) -> Option<AgentInfo> {
         cwd,
         path: path.to_string_lossy().to_string(),
         last_active_ms,
+        first_seen_ms: last_active_ms,
     })
 }
 
@@ -219,7 +222,16 @@ fn parse_codex(path: &Path) -> Option<AgentInfo> {
         cwd,
         path: path.to_string_lossy().to_string(),
         last_active_ms,
+        first_seen_ms: last_active_ms,
     })
+}
+
+fn upsert(state: &AgentMap, mut info: AgentInfo) {
+    let mut map = state.lock().unwrap();
+    if let Some(existing) = map.get(&info.id) {
+        info.first_seen_ms = existing.first_seen_ms;
+    }
+    map.insert(info.id.clone(), info);
 }
 
 fn cutoff_ms() -> u64 {
@@ -249,7 +261,7 @@ fn scan_claude(root: &Path, state: &AgentMap) {
         }
         if let Some(info) = parse_claude(&path) {
             if info.last_active_ms >= cutoff {
-                state.lock().unwrap().insert(info.id.clone(), info);
+                upsert(state, info);
             }
         }
     }
@@ -267,7 +279,7 @@ fn scan_codex(root: &Path, state: &AgentMap) {
         }
         if let Some(info) = parse_codex(&path) {
             if info.last_active_ms >= cutoff {
-                state.lock().unwrap().insert(info.id.clone(), info);
+                upsert(state, info);
             }
         }
     }
