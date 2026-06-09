@@ -1,10 +1,15 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { type CSSProperties, useEffect, useState } from 'react';
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 type Todo = { id: number; text: string; done: boolean };
 type NemuState = {
-  focus: string;
-  scratch: string;
   todos: Todo[];
   pinned: boolean;
   opacity: number;
@@ -13,8 +18,6 @@ type NemuState = {
 const STORAGE_KEY = 'nemu';
 const MIN_OPACITY = 0.7;
 const DEFAULT_STATE: NemuState = {
-  focus: '',
-  scratch: '',
   todos: [],
   pinned: true,
   opacity: 0.95,
@@ -22,19 +25,12 @@ const DEFAULT_STATE: NemuState = {
 
 function clampOpacity(value: unknown) {
   const opacity = Number(value);
-
-  if (!Number.isFinite(opacity)) {
-    return DEFAULT_STATE.opacity;
-  }
-
+  if (!Number.isFinite(opacity)) return DEFAULT_STATE.opacity;
   return Math.min(1, Math.max(MIN_OPACITY, opacity));
 }
 
 function normalizeTodos(value: unknown): Todo[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
+  if (!Array.isArray(value)) return [];
   return value
     .filter((todo): todo is Partial<Todo> => Boolean(todo) && typeof todo === 'object')
     .map(todo => ({
@@ -48,16 +44,9 @@ function normalizeTodos(value: unknown): Todo[] {
 function loadState(): NemuState {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-
-    if (!data) {
-      return DEFAULT_STATE;
-    }
-
+    if (!data) return DEFAULT_STATE;
     const saved = JSON.parse(data) as Partial<NemuState>;
-
     return {
-      focus: typeof saved.focus === 'string' ? saved.focus : DEFAULT_STATE.focus,
-      scratch: typeof saved.scratch === 'string' ? saved.scratch : DEFAULT_STATE.scratch,
       todos: normalizeTodos(saved.todos),
       pinned: typeof saved.pinned === 'boolean' ? saved.pinned : DEFAULT_STATE.pinned,
       opacity: clampOpacity(saved.opacity),
@@ -65,6 +54,11 @@ function loadState(): NemuState {
   } catch {
     return DEFAULT_STATE;
   }
+}
+
+function autosize(el: HTMLTextAreaElement) {
+  el.style.height = '0';
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 const PinIcon = () => (
@@ -88,21 +82,87 @@ const CloseIcon = () => (
   </svg>
 );
 
+const CheckIcon = () => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' strokeLinecap='round' strokeLinejoin='round'>
+    <polyline points='20 6 9 17 4 12' />
+  </svg>
+);
+
+function CardEditor({
+  initial,
+  placeholder,
+  onCommit,
+  onCancel,
+}: {
+  initial: string;
+  placeholder?: string;
+  onCommit: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(initial);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+    autosize(el);
+  }, []);
+
+  const handleKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      const trimmed = text.trim();
+      if (trimmed) onCommit(trimmed);
+      else onCancel();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      onCancel();
+    }
+  };
+
+  const handleBlur = () => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      onCancel();
+      return;
+    }
+    if (trimmed !== initial) onCommit(trimmed);
+    else onCancel();
+  };
+
+  return (
+    <article className='todo-card editing'>
+      <textarea
+        ref={ref}
+        rows={1}
+        value={text}
+        placeholder={placeholder}
+        onChange={event => {
+          setText(event.target.value);
+          autosize(event.currentTarget);
+        }}
+        onKeyDown={handleKey}
+        onBlur={handleBlur}
+      />
+    </article>
+  );
+}
+
 export default function App() {
   const [state, setState] = useState<NemuState>(loadState);
-  const [input, setInput] = useState('');
-  const { focus, scratch, todos, pinned, opacity } = state;
+  const [composing, setComposing] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const { todos, pinned, opacity } = state;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
   useEffect(() => {
-    if (!('__TAURI_INTERNALS__' in window)) {
-      return;
-    }
-
-    const syncPinnedState = async () => {
+    if (!('__TAURI_INTERNALS__' in window)) return;
+    void (async () => {
       try {
         const appWindow = getCurrentWindow();
         await appWindow.setAlwaysOnTop(pinned);
@@ -110,32 +170,58 @@ export default function App() {
       } catch (error) {
         console.warn('Unable to update window pin state', error);
       }
-    };
-
-    void syncPinnedState();
+    })();
   }, [pinned]);
 
   const updateState = (patch: Partial<NemuState>) => {
     setState(current => ({ ...current, ...patch }));
   };
 
-  const addTodo = () => {
-    if (!input.trim()) return;
-    updateState({ todos: [{ id: Date.now(), text: input.trim(), done: false }, ...todos] });
-    setInput('');
+  const addTodo = (text: string) => {
+    updateState({ todos: [{ id: Date.now(), text, done: false }, ...todos] });
+    setComposing(false);
+  };
+
+  const updateTodoText = (id: number, text: string) => {
+    updateState({
+      todos: todos.map(todo => (todo.id === id ? { ...todo, text } : todo)),
+    });
+    setEditingId(null);
   };
 
   const toggleTodo = (id: number) => {
     updateState({
-      todos: todos.map(todo => todo.id === id ? { ...todo, done: !todo.done } : todo),
+      todos: todos.map(todo => (todo.id === id ? { ...todo, done: !todo.done } : todo)),
     });
   };
 
   const removeTodo = (id: number) => {
     updateState({ todos: todos.filter(todo => todo.id !== id) });
+    if (editingId === id) setEditingId(null);
+  };
+
+  const beginCompose = () => {
+    if (editingId !== null) return;
+    setComposing(true);
+  };
+
+  const onSurfaceDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (composing) return;
+    beginCompose();
   };
 
   const activeCount = todos.filter(todo => !todo.done).length;
+  const doneCount = todos.length - activeCount;
+  const status =
+    todos.length === 0
+      ? 'ready when you are'
+      : activeCount === 0
+        ? 'all clear'
+        : doneCount === 0
+          ? `${activeCount} open`
+          : `${activeCount} open · ${doneCount} done`;
+
   const cardStyle = { '--panel-alpha': opacity.toFixed(2) } as CSSProperties;
 
   return (
@@ -143,7 +229,7 @@ export default function App() {
       <div className='header'>
         <div className='brand' data-tauri-drag-region>
           <div className='title' data-tauri-drag-region>Nemu</div>
-          <div className='subtitle' data-tauri-drag-region>working memory</div>
+          <div className='subtitle' data-tauri-drag-region>{status}</div>
         </div>
         <div className='header-actions'>
           <button
@@ -159,46 +245,46 @@ export default function App() {
         </div>
       </div>
 
-      <section>
-        <label>Focus</label>
-        <input
-          value={focus}
-          placeholder='One thing to keep in view'
-          onChange={event => updateState({ focus: event.target.value })}
-        />
-      </section>
-
-      <section className='task-section'>
-        <div className='section-heading'>
-          <label>Today</label>
-          <span>{activeCount} open</span>
-        </div>
-        <div className='todo-input'>
-          <input
-            value={input}
-            placeholder='Capture a task'
-            onChange={event => setInput(event.target.value)}
-            onKeyDown={event => event.key === 'Enter' && addTodo()}
+      <div className='card-surface' onDoubleClick={onSurfaceDoubleClick}>
+        {composing && (
+          <CardEditor
+            initial=''
+            placeholder='What needs doing?'
+            onCommit={addTodo}
+            onCancel={() => setComposing(false)}
           />
-          <button type='button' aria-label='Add task' onClick={addTodo}>
-            <PlusIcon />
-          </button>
-        </div>
+        )}
 
-        <div className='todo-list'>
-          {todos.map(todo => (
+        {todos.map(todo =>
+          editingId === todo.id ? (
+            <CardEditor
+              key={todo.id}
+              initial={todo.text}
+              onCommit={text => updateTodoText(todo.id, text)}
+              onCancel={() => setEditingId(null)}
+            />
+          ) : (
             <article
               className={`todo-card${todo.done ? ' done' : ''}`}
               key={todo.id}
-              title={todo.done ? 'Double-click to reopen' : 'Double-click to complete'}
-              onDoubleClick={() => toggleTodo(todo.id)}
+              title='Double-click to edit'
+              onDoubleClick={event => {
+                event.stopPropagation();
+                setEditingId(todo.id);
+              }}
             >
-              <input
-                aria-label={todo.done ? 'Mark task open' : 'Mark task complete'}
-                type='checkbox'
-                checked={todo.done}
-                onChange={() => toggleTodo(todo.id)}
-              />
+              <button
+                className='todo-check'
+                type='button'
+                aria-label={todo.done ? 'Mark task open' : 'Mark task done'}
+                aria-pressed={todo.done}
+                onClick={event => {
+                  event.stopPropagation();
+                  toggleTodo(todo.id);
+                }}
+              >
+                {todo.done && <CheckIcon />}
+              </button>
               <span className='todo-text'>{todo.text}</span>
               <button
                 className='todo-remove'
@@ -212,18 +298,24 @@ export default function App() {
                 <CloseIcon />
               </button>
             </article>
-          ))}
-        </div>
-      </section>
+          )
+        )}
 
-      <section className='scratch-section'>
-        <label>Scratch</label>
-        <textarea
-          value={scratch}
-          placeholder='Loose notes'
-          onChange={event => updateState({ scratch: event.target.value })}
-        />
-      </section>
+        {!composing && todos.length === 0 && (
+          <button className='empty-state' type='button' onClick={beginCompose}>
+            <PlusIcon />
+            <span className='empty-title'>Nothing on the list</span>
+            <span className='empty-hint'>Double-click anywhere, or click here</span>
+          </button>
+        )}
+
+        {!composing && todos.length > 0 && (
+          <button className='add-hint' type='button' aria-label='Add task' onClick={beginCompose}>
+            <PlusIcon />
+            <span>Add task</span>
+          </button>
+        )}
+      </div>
 
       <div className='control-strip'>
         <span>Opacity</span>

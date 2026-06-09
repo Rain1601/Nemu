@@ -66,7 +66,7 @@ button {
   cursor: pointer;
 }
 
-/* ---------- card shell ---------- */
+/* ---------- shell ---------- */
 .nemu-card {
   --panel-alpha: 0.95;
   position: relative;
@@ -75,7 +75,7 @@ button {
   width: 100vw;
   height: 100vh;
   padding: 18px 18px 14px;
-  gap: 18px;
+  gap: 14px;
   overflow: hidden;
   isolation: isolate;
   border-radius: 14px;
@@ -125,10 +125,10 @@ button {
 }
 
 .subtitle {
-  margin-top: 5px;
-  font-size: 10px;
+  margin-top: 6px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
@@ -149,7 +149,7 @@ button {
   border-radius: 8px;
   color: var(--text-muted);
   background: transparent;
-  transition: color 150ms ease, background 150ms ease, transform 150ms ease;
+  transition: color 150ms ease, background 150ms ease;
 }
 
 .pin-button svg {
@@ -172,183 +172,85 @@ button {
   transform: rotate(-20deg);
 }
 
-/* ---------- sections ---------- */
-section {
-  margin: 0;
-  min-width: 0;
-}
-
-label {
-  display: block;
-  margin: 0 0 8px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.section-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.section-heading label {
-  margin: 0;
-}
-
-.section-heading span {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-}
-
-/* ---------- inputs / textareas ---------- */
-input:not([type="range"]):not([type="checkbox"]),
-textarea {
-  width: 100%;
-  border: 1px solid var(--border-faint);
-  outline: none;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-family: "Times New Roman", "Songti SC", "宋体", serif;
-  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: var(--text-faint);
-  font-style: italic;
-}
-
-input:not([type="range"]):not([type="checkbox"]):focus,
-textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-
-/* Focus single-line input */
-section > input:not([type="range"]):not([type="checkbox"]) {
-  height: 40px;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 15px;
-}
-
-/* ---------- todo input ---------- */
-.todo-input {
-  display: flex;
-  gap: 8px;
-}
-
-.todo-input input {
-  height: 34px;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-family: Inter, -apple-system, system-ui, sans-serif;
-  font-size: 13px;
-}
-
-.todo-input button {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  border: 0;
-  border-radius: 8px;
-  color: var(--bg-paper);
-  background: var(--text-primary);
-  transition: background 150ms ease, transform 150ms ease;
-}
-
-.todo-input button svg {
-  width: 14px;
-  height: 14px;
-}
-
-.todo-input button:hover {
-  background: var(--accent);
-  transform: translateY(-1px);
-}
-
-.todo-input button:active {
-  transform: translateY(0);
-}
-
-/* ---------- todo list ---------- */
-.todo-list {
+/* ---------- card surface ---------- */
+.card-surface {
   display: flex;
   flex-direction: column;
-  margin-top: 8px;
-  max-height: 130px;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
   overflow-y: auto;
-  padding-right: 2px;
+  margin: 0 -4px;
+  padding: 2px 4px;
 }
 
+/* ---------- todo card ---------- */
 .todo-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--border-faint);
+  padding: 11px 12px;
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  background: var(--bg-surface);
   cursor: default;
-  transition: background 150ms ease;
-}
-
-.todo-card:last-child {
-  border-bottom: 0;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
 .todo-card:hover {
-  background: var(--bg-muted);
+  border-color: var(--border-soft);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.todo-card input[type="checkbox"] {
+.todo-card.done {
+  background: var(--bg-muted);
+  border-color: var(--border-faint);
+}
+
+.todo-card.editing {
+  border-color: var(--accent);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  cursor: text;
+}
+
+.todo-check {
   display: grid;
   place-items: center;
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  appearance: none;
-  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
   border: 1.5px solid var(--border-soft);
-  border-radius: 4px;
+  border-radius: 50%;
   background: transparent;
-  cursor: pointer;
+  color: #ffffff;
   transition: border-color 150ms ease, background 150ms ease;
 }
 
-.todo-card input[type="checkbox"]:hover {
+.todo-check svg {
+  width: 9px;
+  height: 9px;
+}
+
+.todo-check:hover {
   border-color: var(--accent);
 }
 
-.todo-card input[type="checkbox"]:checked {
+.todo-card.done .todo-check {
   border-color: var(--accent);
   background: var(--accent);
-}
-
-.todo-card input[type="checkbox"]:checked::after {
-  width: 6px;
-  height: 3px;
-  border-left: 1.5px solid #ffffff;
-  border-bottom: 1.5px solid #ffffff;
-  transform: rotate(-45deg) translate(1px, -1px);
-  content: "";
 }
 
 .todo-text {
   min-width: 0;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.4;
-  color: var(--text-secondary);
+  padding-top: 1px;
+  font-family: "Times New Roman", "Songti SC", "宋体", serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-primary);
   overflow-wrap: anywhere;
-  transition: color 150ms ease;
+  white-space: pre-wrap;
 }
 
 .todo-card.done .todo-text {
@@ -363,6 +265,7 @@ section > input:not([type="range"]):not([type="checkbox"]) {
   place-items: center;
   width: 22px;
   height: 22px;
+  margin-top: -1px;
   border: 0;
   border-radius: 6px;
   color: var(--text-faint);
@@ -386,22 +289,103 @@ section > input:not([type="range"]):not([type="checkbox"]) {
   background: var(--accent-soft);
 }
 
-/* ---------- scratch ---------- */
-.scratch-section {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
+/* ---------- editing textarea ---------- */
+.todo-card.editing textarea {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  font-family: "Times New Roman", "Songti SC", "宋体", serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-primary);
 }
 
-textarea {
+.todo-card.editing textarea::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* ---------- add hint (with cards) ---------- */
+.add-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  border: 1.5px dashed var(--border-soft);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.add-hint svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.5;
+}
+
+.add-hint:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ---------- empty state (no cards) ---------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   flex: 1;
-  min-height: 56px;
-  resize: none;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 13.5px;
-  line-height: 1.6;
+  min-height: 180px;
+  border: 1.5px dashed var(--border-faint);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-faint);
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.empty-state svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+}
+
+.empty-title {
+  font-family: "Times New Roman", "Songti SC", "宋体", serif;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.empty-hint {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.empty-state:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.empty-state:hover .empty-title {
+  color: var(--accent);
 }
 
 /* ---------- footer / opacity ---------- */
@@ -458,19 +442,19 @@ textarea {
 }
 
 /* ---------- scrollbar ---------- */
-.todo-list::-webkit-scrollbar {
+.card-surface::-webkit-scrollbar {
   width: 4px;
 }
 
-.todo-list::-webkit-scrollbar-track {
+.card-surface::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.todo-list::-webkit-scrollbar-thumb {
+.card-surface::-webkit-scrollbar-thumb {
   border-radius: 2px;
   background: var(--border-soft);
 }
 
-.todo-list::-webkit-scrollbar-thumb:hover {
+.card-surface::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
