@@ -95,6 +95,22 @@ const CheckIcon = () => (
   </svg>
 );
 
+const GripIcon = () => (
+  <svg viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round'>
+    <line x1='14' y1='6' x2='6' y2='14' />
+    <line x1='14' y1='10' x2='10' y2='14' />
+  </svg>
+);
+
+async function startResize() {
+  if (!('__TAURI_INTERNALS__' in window)) return;
+  try {
+    await getCurrentWindow().startResizeDragging('SouthEast');
+  } catch (error) {
+    console.warn('Resize drag failed', error);
+  }
+}
+
 function CardEditor({
   initial,
   placeholder,
@@ -256,12 +272,12 @@ export default function App() {
 
   return (
     <div className='nemu-card' style={cardStyle}>
-      <div className='header'>
-        <div className='brand' data-tauri-drag-region>
-          <div className='title' data-tauri-drag-region>Nemu</div>
-          <div className='subtitle' data-tauri-drag-region>{status}</div>
+      <div className='header' data-tauri-drag-region>
+        <div className='brand'>
+          <div className='title'>Nemu</div>
+          <div className='subtitle'>{status}</div>
         </div>
-        <div className='header-actions'>
+        <div className='header-actions' data-tauri-drag-region='false'>
           <button
             className={`icon-button pin-button${pinned ? ' active' : ''}`}
             type='button'
@@ -383,6 +399,21 @@ export default function App() {
           </button>
         )}
       </div>
+
+      <button
+        className='resize-grip'
+        type='button'
+        aria-label='Resize window'
+        title='Drag to resize'
+        data-tauri-drag-region='false'
+        onPointerDown={event => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          void startResize();
+        }}
+      >
+        <GripIcon />
+      </button>
     </div>
   );
 }
