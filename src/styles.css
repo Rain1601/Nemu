@@ -1,1 +1,476 @@
-body{margin:0;background:transparent;font-family:Inter,sans-serif;color:white} .nemu-card{width:320px;margin:12px;padding:16px;border-radius:20px;background:rgba(30,30,30,.75);backdrop-filter:blur(20px)} .header{margin-bottom:12px;font-weight:700}.subtitle{font-size:12px;opacity:.6} section{margin-top:14px} label{display:block;font-size:12px;opacity:.7;margin-bottom:6px} input,textarea{width:100%;box-sizing:border-box;background:rgba(255,255,255,.08);border:none;border-radius:10px;color:white;padding:8px} textarea{height:100px} .todo-input{display:flex;gap:6px}.todo-input button{width:40px;border:none;border-radius:10px}.todo{display:flex;gap:8px;padding:4px 0;align-items:center}
+:root {
+  --bg-paper: #FAF8F4;
+  --bg-surface: #FFFFFF;
+  --bg-muted: #F4F0EA;
+  --border-faint: #ECE7DF;
+  --border-soft: #DED7CB;
+  --text-primary: #1C1917;
+  --text-secondary: #44403C;
+  --text-muted: #78716C;
+  --text-faint: #A8A29E;
+  --accent: #D97149;
+  --accent-hover: #C45A33;
+  --accent-soft: #FFF1EA;
+  --focus-ring: rgba(217, 113, 73, 0.16);
+
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-secondary);
+  background: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-paper: #1C1917;
+    --bg-surface: #232020;
+    --bg-muted: #2A2522;
+    --border-faint: #2E2926;
+    --border-soft: #3D3631;
+    --text-primary: #FAFAF9;
+    --text-secondary: #E7E5E4;
+    --text-muted: #A8A29E;
+    --text-faint: #78716C;
+    --accent: #E48563;
+    --accent-hover: #D97149;
+    --accent-soft: #3A2820;
+    --focus-ring: rgba(228, 133, 99, 0.20);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html,
+body,
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  -webkit-app-region: no-drag;
+  cursor: pointer;
+}
+
+/* ---------- card shell ---------- */
+.nemu-card {
+  --panel-alpha: 0.95;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  padding: 18px 18px 14px;
+  gap: 18px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 14px;
+  color: var(--text-primary);
+}
+
+.nemu-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--bg-paper);
+  opacity: var(--panel-alpha);
+  box-shadow:
+    inset 0 0 0 1px var(--border-faint),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 28px rgba(0, 0, 0, 0.06);
+  content: "";
+  transition: opacity 200ms ease;
+}
+
+/* ---------- header ---------- */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.brand {
+  flex: 1;
+  min-width: 0;
+  cursor: grab;
+}
+
+.brand:active {
+  cursor: grabbing;
+}
+
+.title {
+  font-family: "Times New Roman", "Songti SC", "宋体", serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.pin-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: transparent;
+  transition: color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.pin-button svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 200ms ease;
+}
+
+.pin-button:hover {
+  color: var(--text-primary);
+  background: var(--bg-muted);
+}
+
+.pin-button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pin-button.active svg {
+  transform: rotate(-20deg);
+}
+
+/* ---------- sections ---------- */
+section {
+  margin: 0;
+  min-width: 0;
+}
+
+label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.section-heading label {
+  margin: 0;
+}
+
+.section-heading span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+/* ---------- inputs / textareas ---------- */
+input:not([type="range"]):not([type="checkbox"]),
+textarea {
+  width: 100%;
+  border: 1px solid var(--border-faint);
+  outline: none;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: "Times New Roman", "Songti SC", "宋体", serif;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+input:not([type="range"]):not([type="checkbox"]):focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Focus single-line input */
+section > input:not([type="range"]):not([type="checkbox"]) {
+  height: 40px;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 15px;
+}
+
+/* ---------- todo input ---------- */
+.todo-input {
+  display: flex;
+  gap: 8px;
+}
+
+.todo-input input {
+  height: 34px;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-family: Inter, -apple-system, system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.todo-input button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  color: var(--bg-paper);
+  background: var(--text-primary);
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.todo-input button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.todo-input button:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+.todo-input button:active {
+  transform: translateY(0);
+}
+
+/* ---------- todo list ---------- */
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  max-height: 130px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.todo-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border-faint);
+  cursor: default;
+  transition: background 150ms ease;
+}
+
+.todo-card:last-child {
+  border-bottom: 0;
+}
+
+.todo-card:hover {
+  background: var(--bg-muted);
+}
+
+.todo-card input[type="checkbox"] {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.todo-card input[type="checkbox"]:hover {
+  border-color: var(--accent);
+}
+
+.todo-card input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.todo-card input[type="checkbox"]:checked::after {
+  width: 6px;
+  height: 3px;
+  border-left: 1.5px solid #ffffff;
+  border-bottom: 1.5px solid #ffffff;
+  transform: rotate(-45deg) translate(1px, -1px);
+  content: "";
+}
+
+.todo-text {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  transition: color 150ms ease;
+}
+
+.todo-card.done .todo-text {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-faint);
+  text-decoration-thickness: 1px;
+}
+
+.todo-remove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-faint);
+  background: transparent;
+  opacity: 0;
+  transition: opacity 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.todo-remove svg {
+  width: 11px;
+  height: 11px;
+}
+
+.todo-card:hover .todo-remove,
+.todo-remove:focus-visible {
+  opacity: 1;
+}
+
+.todo-remove:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ---------- scratch ---------- */
+.scratch-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+textarea {
+  flex: 1;
+  min-height: 56px;
+  resize: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ---------- footer / opacity ---------- */
+.control-strip {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-faint);
+}
+
+.control-strip span,
+.control-strip strong {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.control-strip strong {
+  min-width: 30px;
+  text-align: right;
+}
+
+.opacity-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--border-faint);
+  outline: none;
+  cursor: pointer;
+}
+
+.opacity-slider::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--bg-paper);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.opacity-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* ---------- scrollbar ---------- */
+.todo-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.todo-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.todo-list::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: var(--border-soft);
+}
+
+.todo-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
