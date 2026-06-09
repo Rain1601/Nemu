@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   type CSSProperties,
@@ -7,6 +9,33 @@ import {
   useRef,
   useState,
 } from 'react';
+
+type AgentInfo = {
+  id: string;
+  tool: 'claude' | 'codex';
+  project: string;
+  cwd: string;
+  path: string;
+  lastActiveMs: number;
+};
+
+type AgentStatus = 'active' | 'recent' | 'idle' | 'dormant';
+
+function classifyAgent(lastActiveMs: number, nowMs: number): AgentStatus {
+  const elapsed = (nowMs - lastActiveMs) / 1000;
+  if (elapsed <= 30) return 'active';
+  if (elapsed <= 300) return 'recent';
+  if (elapsed <= 3600) return 'idle';
+  return 'dormant';
+}
+
+function relativeTime(lastActiveMs: number, nowMs: number): string {
+  const elapsed = Math.max(0, (nowMs - lastActiveMs) / 1000);
+  if (elapsed < 5) return 'now';
+  if (elapsed < 60) return `${Math.floor(elapsed)}s ago`;
+  if (elapsed < 3600) return `${Math.floor(elapsed / 60)}m ago`;
+  return `${Math.floor(elapsed / 3600)}h ago`;
+}
 
 type Todo = { id: number; text: string; done: boolean };
 type NemuState = {
@@ -187,6 +216,8 @@ export default function App() {
   const [composing, setComposing] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsPopoverRef = useRef<HTMLDivElement>(null);
   const { todos, pinned, opacity } = state;
@@ -207,6 +238,30 @@ export default function App() {
       }
     })();
   }, [pinned]);
+
+  useEffect(() => {
+    if (!('__TAURI_INTERNALS__' in window)) return;
+    let unlisten: UnlistenFn | undefined;
+    void (async () => {
+      try {
+        const snap = await invoke<AgentInfo[]>('list_agents');
+        setAgents(snap);
+        unlisten = await listen<AgentInfo[]>('agents-updated', event => {
+          setAgents(event.payload);
+        });
+      } catch (error) {
+        console.warn('Agent watcher unavailable', error);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 5000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -265,6 +320,13 @@ export default function App() {
     if (composing) return;
     beginCompose();
   };
+
+  const visibleAgents = agents.filter(
+    agent => classifyAgent(agent.lastActiveMs, nowMs) !== 'dormant'
+  );
+  const activeAgentCount = visibleAgents.filter(
+    agent => classifyAgent(agent.lastActiveMs, nowMs) === 'active'
+  ).length;
 
   const activeCount = todos.filter(todo => !todo.done).length;
   const doneCount = todos.length - activeCount;
@@ -345,6 +407,38 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {visibleAgents.length > 0 && (
+        <div className='agent-section'>
+          <div className='agent-heading'>
+            <label>Agents</label>
+            <span>
+              {activeAgentCount > 0
+                ? `${activeAgentCount} active`
+                : `${visibleAgents.length} recent`}
+            </span>
+          </div>
+          <div className='agent-list'>
+            {visibleAgents.map(agent => {
+              const status = classifyAgent(agent.lastActiveMs, nowMs);
+              return (
+                <div
+                  className={`agent-card status-${status}`}
+                  key={agent.id}
+                  title={agent.cwd}
+                >
+                  <span className='agent-dot' aria-hidden='true' />
+                  <span className='agent-project'>{agent.project}</span>
+                  <span className='agent-tool'>{agent.tool}</span>
+                  <span className='agent-time'>
+                    {relativeTime(agent.lastActiveMs, nowMs)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className='card-surface' onDoubleClick={onSurfaceDoubleClick}>
         {composing && (
