@@ -43,6 +43,7 @@ type NemuState = {
   todos: Todo[];
   pinned: boolean;
   opacity: number;
+  agentsCollapsed: boolean;
 };
 
 const STORAGE_KEY = 'nemu';
@@ -51,6 +52,7 @@ const DEFAULT_STATE: NemuState = {
   todos: [],
   pinned: true,
   opacity: 0.95,
+  agentsCollapsed: false,
 };
 
 function clampOpacity(value: unknown) {
@@ -80,6 +82,10 @@ function loadState(): NemuState {
       todos: normalizeTodos(saved.todos),
       pinned: typeof saved.pinned === 'boolean' ? saved.pinned : DEFAULT_STATE.pinned,
       opacity: clampOpacity(saved.opacity),
+      agentsCollapsed:
+        typeof saved.agentsCollapsed === 'boolean'
+          ? saved.agentsCollapsed
+          : DEFAULT_STATE.agentsCollapsed,
     };
   } catch {
     return DEFAULT_STATE;
@@ -129,6 +135,12 @@ const GripIcon = () => (
   <svg viewBox='0 0 16 16' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round'>
     <line x1='14' y1='6' x2='6' y2='14' />
     <line x1='14' y1='10' x2='10' y2='14' />
+  </svg>
+);
+
+const ChevronIcon = () => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.4' strokeLinecap='round' strokeLinejoin='round'>
+    <polyline points='6 9 12 15 18 9' />
   </svg>
 );
 
@@ -221,7 +233,7 @@ export default function App() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsPopoverRef = useRef<HTMLDivElement>(null);
-  const { todos, pinned, opacity } = state;
+  const { todos, pinned, opacity, agentsCollapsed } = state;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -410,35 +422,46 @@ export default function App() {
       </div>
 
       {visibleAgents.length > 0 && (
-        <div className='agent-section'>
-          <div className='agent-heading'>
-            <label>Agents</label>
-            <span>
+        <section className={`agent-section${agentsCollapsed ? ' collapsed' : ''}`}>
+          <button
+            className='agent-heading'
+            type='button'
+            aria-expanded={!agentsCollapsed}
+            aria-controls='agent-list'
+            onClick={() => updateState({ agentsCollapsed: !agentsCollapsed })}
+          >
+            <span className='agent-chevron' aria-hidden='true'>
+              <ChevronIcon />
+            </span>
+            <span className='agent-heading-label'>Agents</span>
+            <span className='agent-heading-count'>
               {activeAgentCount > 0
                 ? `${activeAgentCount} active`
                 : `${visibleAgents.length} recent`}
             </span>
+          </button>
+          <div className='agent-list-shell'>
+            <div className='agent-list' id='agent-list'>
+              {visibleAgents.map(agent => {
+                const status = classifyAgent(agent.lastActiveMs, nowMs);
+                return (
+                  <div
+                    className={`agent-card status-${status}`}
+                    key={agent.id}
+                    title={agent.cwd}
+                  >
+                    <span className='agent-dot' aria-hidden='true' />
+                    <span className='agent-project'>{agent.project}</span>
+                    <span className='agent-tool'>{agent.tool}</span>
+                    <span className='agent-time'>
+                      {relativeTime(agent.lastActiveMs, nowMs)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className='agent-list'>
-            {visibleAgents.map(agent => {
-              const status = classifyAgent(agent.lastActiveMs, nowMs);
-              return (
-                <div
-                  className={`agent-card status-${status}`}
-                  key={agent.id}
-                  title={agent.cwd}
-                >
-                  <span className='agent-dot' aria-hidden='true' />
-                  <span className='agent-project'>{agent.project}</span>
-                  <span className='agent-tool'>{agent.tool}</span>
-                  <span className='agent-time'>
-                    {relativeTime(agent.lastActiveMs, nowMs)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        </section>
       )}
 
       <div className='card-surface' onDoubleClick={onSurfaceDoubleClick}>
