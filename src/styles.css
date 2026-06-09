@@ -407,7 +407,8 @@ button {
   justify-content: center;
   gap: 8px;
   flex: 1;
-  min-height: 180px;
+  min-height: 0;
+  padding: 16px;
   border: 1.5px dashed var(--border-faint);
   border-radius: 12px;
   background: transparent;
