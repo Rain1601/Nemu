@@ -68,6 +68,13 @@ const PinIcon = () => (
   </svg>
 );
 
+const SettingsIcon = () => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+    <circle cx='12' cy='12' r='3' />
+    <path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z' />
+  </svg>
+);
+
 const PlusIcon = () => (
   <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.4' strokeLinecap='round'>
     <line x1='12' y1='5' x2='12' y2='19' />
@@ -154,6 +161,9 @@ export default function App() {
   const [state, setState] = useState<NemuState>(loadState);
   const [composing, setComposing] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const settingsPopoverRef = useRef<HTMLDivElement>(null);
   const { todos, pinned, opacity } = state;
 
   useEffect(() => {
@@ -172,6 +182,26 @@ export default function App() {
       }
     })();
   }, [pinned]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (settingsPopoverRef.current?.contains(target)) return;
+      if (settingsButtonRef.current?.contains(target)) return;
+      setSettingsOpen(false);
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setSettingsOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [settingsOpen]);
 
   const updateState = (patch: Partial<NemuState>) => {
     setState(current => ({ ...current, ...patch }));
@@ -233,7 +263,7 @@ export default function App() {
         </div>
         <div className='header-actions'>
           <button
-            className={`pin-button${pinned ? ' active' : ''}`}
+            className={`icon-button pin-button${pinned ? ' active' : ''}`}
             type='button'
             aria-pressed={pinned}
             aria-label={pinned ? 'Disable always on top' : 'Keep always on top'}
@@ -242,6 +272,43 @@ export default function App() {
           >
             <PinIcon />
           </button>
+          <button
+            ref={settingsButtonRef}
+            className={`icon-button settings-button${settingsOpen ? ' active' : ''}`}
+            type='button'
+            aria-expanded={settingsOpen}
+            aria-haspopup='dialog'
+            aria-label='Settings'
+            title='Settings'
+            onClick={() => setSettingsOpen(open => !open)}
+          >
+            <SettingsIcon />
+          </button>
+
+          {settingsOpen && (
+            <div
+              ref={settingsPopoverRef}
+              className='settings-popover'
+              role='dialog'
+              aria-label='Settings'
+            >
+              <div className='settings-row'>
+                <label className='settings-label' htmlFor='nemu-opacity'>Opacity</label>
+                <span className='settings-value'>{Math.round(opacity * 100)}%</span>
+              </div>
+              <input
+                id='nemu-opacity'
+                aria-label='Panel opacity'
+                className='opacity-slider'
+                type='range'
+                min={MIN_OPACITY}
+                max='1'
+                step='0.01'
+                value={opacity}
+                onChange={event => updateState({ opacity: clampOpacity(event.target.value) })}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -315,21 +382,6 @@ export default function App() {
             <span>Add task</span>
           </button>
         )}
-      </div>
-
-      <div className='control-strip'>
-        <span>Opacity</span>
-        <input
-          aria-label='Panel opacity'
-          className='opacity-slider'
-          type='range'
-          min={MIN_OPACITY}
-          max='1'
-          step='0.01'
-          value={opacity}
-          onChange={event => updateState({ opacity: clampOpacity(event.target.value) })}
-        />
-        <strong>{Math.round(opacity * 100)}%</strong>
       </div>
     </div>
   );
