@@ -18,6 +18,7 @@ type AgentInfo = {
   path: string;
   lastActiveMs: number;
   firstSeenMs: number;
+  activity?: string;
 };
 
 type AgentStatus = 'active' | 'recent' | 'idle' | 'dormant';
@@ -451,7 +452,12 @@ export default function App() {
                     title={agent.cwd}
                   >
                     <span className='agent-dot' aria-hidden='true' />
-                    <span className='agent-project'>{agent.project}</span>
+                    <div className='agent-text'>
+                      <span className='agent-project'>{agent.project}</span>
+                      {agent.activity && (
+                        <span className='agent-activity'>{agent.activity}</span>
+                      )}
+                    </div>
                     <span className='agent-tool'>{agent.tool}</span>
                     <span className='agent-time'>
                       {relativeTime(agent.lastActiveMs, nowMs)}

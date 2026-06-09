@@ -372,6 +372,13 @@ button {
   background: var(--bg-muted);
 }
 
+.agent-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
 .agent-project {
   min-width: 0;
   overflow: hidden;
@@ -381,6 +388,24 @@ button {
   font-weight: 500;
   color: var(--text-primary);
   font-family: Inter, -apple-system, system-ui, sans-serif;
+  line-height: 1.2;
+}
+
+.agent-activity {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-faint);
+  font-family: "SF Mono", Monaco, Menlo, monospace;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.agent-card.status-idle .agent-activity {
+  opacity: 0.7;
 }
 
 .agent-card.status-idle .agent-project {

@@ -2,7 +2,7 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
@@ -25,6 +25,8 @@ pub struct AgentInfo {
     pub path: String,
     pub last_active_ms: u64,
     pub first_seen_ms: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub activity: Option<String>,
 }
 
 type AgentMap = Arc<Mutex<HashMap<String, AgentInfo>>>;
@@ -154,6 +156,121 @@ fn path_under(path: &Path, root: &Path) -> bool {
     path.starts_with(root)
 }
 
+/// Read up to the last `cap` bytes of a file (faster than reading the whole jsonl).
+fn tail_bytes(path: &Path, cap: u64) -> Option<Vec<u8>> {
+    let mut file = fs::File::open(path).ok()?;
+    let len = file.metadata().ok()?.len();
+    let start = len.saturating_sub(cap);
+    file.seek(SeekFrom::Start(start)).ok()?;
+    let mut buf = Vec::with_capacity(cap as usize);
+    file.read_to_end(&mut buf).ok()?;
+    Some(buf)
+}
+
+/// Walk the file's last lines in reverse, decode each as JSON, return the first
+/// activity description we can derive.
+fn read_last_activity(path: &Path) -> Option<String> {
+    let bytes = tail_bytes(path, 16 * 1024)?;
+    let text = String::from_utf8_lossy(&bytes);
+    for line in text.lines().rev() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            if let Some(activity) = extract_activity(&json) {
+                return Some(activity);
+            }
+        }
+    }
+    None
+}
+
+fn extract_activity(json: &serde_json::Value) -> Option<String> {
+    let t = json.get("type").and_then(|v| v.as_str())?;
+
+    // -------- Claude format --------
+    if t == "assistant" {
+        if let Some(content) = json
+            .get("message")
+            .and_then(|m| m.get("content"))
+            .and_then(|c| c.as_array())
+        {
+            for block in content {
+                if block.get("type").and_then(|v| v.as_str()) == Some("tool_use") {
+                    let name = block
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("tool");
+                    return Some(name.to_lowercase());
+                }
+            }
+        }
+        return Some("writing".to_string());
+    }
+    if t == "user" {
+        if let Some(content) = json
+            .get("message")
+            .and_then(|m| m.get("content"))
+            .and_then(|c| c.as_array())
+        {
+            for block in content {
+                if block.get("type").and_then(|v| v.as_str()) == Some("tool_result") {
+                    return Some("thinking".to_string());
+                }
+            }
+        }
+        return Some("thinking".to_string());
+    }
+    // Claude metadata types — skip, the caller walks to the next line
+    if matches!(
+        t,
+        "system"
+            | "summary"
+            | "ai-title"
+            | "attachment"
+            | "file-history-snapshot"
+            | "last-prompt"
+            | "mode"
+            | "permission-mode"
+    ) {
+        return None;
+    }
+
+    // -------- Codex format --------
+    if let Some(payload) = json.get("payload") {
+        if let Some(ptype) = payload.get("type").and_then(|v| v.as_str()) {
+            return match ptype {
+                "function_call" => {
+                    let name = payload
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("tool");
+                    Some(codex_friendly_tool(name))
+                }
+                "function_call_output" => Some("processing".to_string()),
+                "agent_message" => Some("writing".to_string()),
+                "reasoning" => Some("thinking".to_string()),
+                "task_complete" => Some("done".to_string()),
+                // skip telemetry/state-only events — keep walking
+                "token_count" | "task_started" | "message" => None,
+                other => Some(other.replace('_', " ")),
+            };
+        }
+    }
+
+    None
+}
+
+fn codex_friendly_tool(name: &str) -> String {
+    match name {
+        "exec_command" | "shell" => "shell".to_string(),
+        "apply_patch" => "editing".to_string(),
+        "view_image" => "viewing".to_string(),
+        other => other.replace('_', " ").to_lowercase(),
+    }
+}
+
 fn mtime_ms(path: &Path) -> Option<u64> {
     let meta = fs::metadata(path).ok()?;
     let mtime = meta.modified().ok()?;
@@ -180,6 +297,7 @@ fn parse_claude(path: &Path) -> Option<AgentInfo> {
     let encoded = path.parent()?.file_name()?.to_string_lossy().to_string();
     let cwd = decode_claude_cwd(&encoded);
     let project = project_basename(&cwd);
+    let activity = read_last_activity(path);
     Some(AgentInfo {
         id: format!("claude:{uuid}"),
         tool: "claude".to_string(),
@@ -188,6 +306,7 @@ fn parse_claude(path: &Path) -> Option<AgentInfo> {
         path: path.to_string_lossy().to_string(),
         last_active_ms,
         first_seen_ms: last_active_ms,
+        activity,
     })
 }
 
@@ -215,6 +334,7 @@ fn parse_codex(path: &Path) -> Option<AgentInfo> {
         project_basename(&cwd)
     };
 
+    let activity = read_last_activity(path);
     Some(AgentInfo {
         id,
         tool: "codex".to_string(),
@@ -223,6 +343,7 @@ fn parse_codex(path: &Path) -> Option<AgentInfo> {
         path: path.to_string_lossy().to_string(),
         last_active_ms,
         first_seen_ms: last_active_ms,
+        activity,
     })
 }
 
