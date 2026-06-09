@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Nemu",
+  "productName": "tauri-app",
   "version": "0.1.0",
-  "identifier": "com.rain1601.nemu",
+  "identifier": "com.rain.tauri-app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,17 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "Nemu",
-        "width": 360,
-        "height": 560,
-        "minWidth": 300,
-        "minHeight": 420,
-        "decorations": false,
-        "transparent": true,
-        "resizable": true,
-        "alwaysOnTop": true,
-        "skipTaskbar": false,
-        "center": true
+        "title": "tauri-app",
+        "width": 800,
+        "height": 600
       }
     ],
     "security": {
@@ -31,16 +23,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app"],
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "macOS": {
-      "minimumSystemVersion": "11.0"
-    }
+    ]
   }
 }

@@ -1,17 +1,7 @@
-# Nemu
+# Tauri + React + Typescript
 
-> Your tiny working memory.
+This template should help get you started developing with Tauri, React and Typescript in Vite.
 
-Nemu is a floating desktop workspace for thoughts, focus and tasks.
+## Recommended IDE Setup
 
-Not a todo app.
-
-A working memory.
-
-## MVP
-
-- Focus
-- Today
-- Scratchpad
-- Floating window
-- Local persistence
+- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
