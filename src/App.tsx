@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -155,6 +155,24 @@ const EyeOffIcon = () => (
 );
 
 const HIDE_DURATION_SECONDS = 10;
+const AGENT_ROW_HEIGHT_PX = 44;
+const AGENT_LIST_TOP_GAP_PX = 8;
+const MIN_WINDOW_HEIGHT_PX = 260;
+
+async function resizeWindowBy(deltaPx: number) {
+  if (!('__TAURI_INTERNALS__' in window)) return;
+  try {
+    const appWindow = getCurrentWindow();
+    const inner = await appWindow.innerSize();
+    const factor = await appWindow.scaleFactor();
+    const widthLogical = inner.width / factor;
+    const heightLogical = inner.height / factor;
+    const newHeight = Math.max(MIN_WINDOW_HEIGHT_PX, heightLogical + deltaPx);
+    await appWindow.setSize(new LogicalSize(widthLogical, newHeight));
+  } catch (error) {
+    console.warn('Window resize failed', error);
+  }
+}
 
 async function hideTemporarily() {
   if (!('__TAURI_INTERNALS__' in window)) return;
@@ -206,7 +224,7 @@ function CardEditor({
   }, []);
 
   const handleKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       const trimmed = text.trim();
       if (trimmed) onCommit(trimmed);
@@ -451,54 +469,6 @@ export default function App() {
         </div>
       </div>
 
-      {visibleAgents.length > 0 && (
-        <section className={`agent-section${agentsCollapsed ? ' collapsed' : ''}`}>
-          <button
-            className='agent-heading'
-            type='button'
-            aria-expanded={!agentsCollapsed}
-            aria-controls='agent-list'
-            onClick={() => updateState({ agentsCollapsed: !agentsCollapsed })}
-          >
-            <span className='agent-chevron' aria-hidden='true'>
-              <ChevronIcon />
-            </span>
-            <span className='agent-heading-label'>Agents</span>
-            <span className='agent-heading-count'>
-              {activeAgentCount > 0
-                ? `${activeAgentCount} active`
-                : `${visibleAgents.length} recent`}
-            </span>
-          </button>
-          <div className='agent-list-shell'>
-            <div className='agent-list' id='agent-list'>
-              {visibleAgents.map(agent => {
-                const status = classifyAgent(agent.lastActiveMs, nowMs);
-                return (
-                  <div
-                    className={`agent-card status-${status}`}
-                    key={agent.id}
-                    title={agent.cwd}
-                  >
-                    <span className='agent-dot' aria-hidden='true' />
-                    <div className='agent-text'>
-                      <span className='agent-project'>{agent.project}</span>
-                      {agent.activity && (
-                        <span className='agent-activity'>{agent.activity}</span>
-                      )}
-                    </div>
-                    <span className='agent-tool'>{agent.tool}</span>
-                    <span className='agent-time'>
-                      {relativeTime(agent.lastActiveMs, nowMs)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
       <div className='card-surface' onDoubleClick={onSurfaceDoubleClick}>
         {composing && (
           <CardEditor
@@ -570,6 +540,60 @@ export default function App() {
           </button>
         )}
       </div>
+
+      {visibleAgents.length > 0 && (
+        <section className={`agent-section${agentsCollapsed ? ' collapsed' : ''}`}>
+          <button
+            className='agent-heading'
+            type='button'
+            aria-expanded={!agentsCollapsed}
+            aria-controls='agent-list'
+            onClick={() => {
+              const willExpand = agentsCollapsed;
+              updateState({ agentsCollapsed: !agentsCollapsed });
+              const delta =
+                visibleAgents.length * AGENT_ROW_HEIGHT_PX + AGENT_LIST_TOP_GAP_PX;
+              void resizeWindowBy(willExpand ? delta : -delta);
+            }}
+          >
+            <span className='agent-chevron' aria-hidden='true'>
+              <ChevronIcon />
+            </span>
+            <span className='agent-heading-label'>Agents</span>
+            <span className='agent-heading-count'>
+              {activeAgentCount > 0
+                ? `${activeAgentCount} active`
+                : `${visibleAgents.length} recent`}
+            </span>
+          </button>
+          <div className='agent-list-shell'>
+            <div className='agent-list' id='agent-list'>
+              {visibleAgents.map(agent => {
+                const status = classifyAgent(agent.lastActiveMs, nowMs);
+                return (
+                  <div
+                    className={`agent-card status-${status}`}
+                    key={agent.id}
+                    title={agent.cwd}
+                  >
+                    <span className='agent-dot' aria-hidden='true' />
+                    <div className='agent-text'>
+                      <span className='agent-project'>{agent.project}</span>
+                      {agent.activity && (
+                        <span className='agent-activity'>{agent.activity}</span>
+                      )}
+                    </div>
+                    <span className='agent-tool'>{agent.tool}</span>
+                    <span className='agent-time'>
+                      {relativeTime(agent.lastActiveMs, nowMs)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       <button
         className='resize-grip'

@@ -232,8 +232,8 @@ button {
 .agent-section {
   display: flex;
   flex-direction: column;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-faint);
+  padding-top: 12px;
+  border-top: 1px solid var(--border-faint);
 }
 
 .agent-heading {
