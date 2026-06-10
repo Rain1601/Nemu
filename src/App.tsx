@@ -45,16 +45,30 @@ type NemuState = {
   pinned: boolean;
   opacity: number;
   agentsCollapsed: boolean;
+  hideSeconds: number;
 };
 
 const STORAGE_KEY = 'nemu';
 const MIN_OPACITY = 0.7;
+const HIDE_OPTIONS: { label: string; seconds: number; aria: string }[] = [
+  { label: '10s', seconds: 10, aria: 'Hide for 10 seconds' },
+  { label: '30s', seconds: 30, aria: 'Hide for 30 seconds' },
+  { label: '1m', seconds: 60, aria: 'Hide for 1 minute' },
+  { label: '∞', seconds: 0, aria: 'Hide until the app icon is clicked' },
+];
 const DEFAULT_STATE: NemuState = {
   todos: [],
   pinned: true,
   opacity: 0.95,
   agentsCollapsed: false,
+  hideSeconds: 10,
 };
+
+function normalizeHideSeconds(value: unknown): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return DEFAULT_STATE.hideSeconds;
+  return HIDE_OPTIONS.some(opt => opt.seconds === num) ? num : DEFAULT_STATE.hideSeconds;
+}
 
 function clampOpacity(value: unknown) {
   const opacity = Number(value);
@@ -87,6 +101,7 @@ function loadState(): NemuState {
         typeof saved.agentsCollapsed === 'boolean'
           ? saved.agentsCollapsed
           : DEFAULT_STATE.agentsCollapsed,
+      hideSeconds: normalizeHideSeconds(saved.hideSeconds),
     };
   } catch {
     return DEFAULT_STATE;
@@ -154,7 +169,6 @@ const EyeOffIcon = () => (
   </svg>
 );
 
-const HIDE_DURATION_SECONDS = 10;
 const AGENT_ROW_HEIGHT_PX = 44;
 const AGENT_LIST_TOP_GAP_PX = 8;
 const MIN_WINDOW_HEIGHT_PX = 260;
@@ -174,10 +188,10 @@ async function resizeWindowBy(deltaPx: number) {
   }
 }
 
-async function hideTemporarily() {
+async function hideTemporarily(seconds: number) {
   if (!('__TAURI_INTERNALS__' in window)) return;
   try {
-    await invoke('peek_away', { seconds: HIDE_DURATION_SECONDS });
+    await invoke('peek_away', { seconds });
   } catch (error) {
     console.warn('Peek away failed', error);
   }
@@ -272,7 +286,7 @@ export default function App() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsPopoverRef = useRef<HTMLDivElement>(null);
-  const { todos, pinned, opacity, agentsCollapsed } = state;
+  const { todos, pinned, opacity, agentsCollapsed, hideSeconds } = state;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -423,9 +437,15 @@ export default function App() {
           <button
             className='icon-button hide-button'
             type='button'
-            aria-label='Hide for 10 seconds'
-            title='Peek away (10s)'
-            onClick={() => void hideTemporarily()}
+            aria-label={
+              hideSeconds === 0 ? 'Hide window' : `Hide for ${hideSeconds} seconds`
+            }
+            title={
+              hideSeconds === 0
+                ? 'Peek away (until manual show)'
+                : `Peek away (${hideSeconds}s)`
+            }
+            onClick={() => void hideTemporarily(hideSeconds)}
           >
             <EyeOffIcon />
           </button>
@@ -464,6 +484,24 @@ export default function App() {
                 value={opacity}
                 onChange={event => updateState({ opacity: clampOpacity(event.target.value) })}
               />
+              <div className='settings-row settings-row-tight'>
+                <span className='settings-label'>Hide duration</span>
+              </div>
+              <div className='hide-options' role='radiogroup' aria-label='Hide duration'>
+                {HIDE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.seconds}
+                    type='button'
+                    role='radio'
+                    aria-checked={hideSeconds === opt.seconds}
+                    aria-label={opt.aria}
+                    className={`hide-option${hideSeconds === opt.seconds ? ' active' : ''}`}
+                    onClick={() => updateState({ hideSeconds: opt.seconds })}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
