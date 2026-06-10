@@ -145,6 +145,26 @@ const ChevronIcon = () => (
   </svg>
 );
 
+const EyeOffIcon = () => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+    <path d='M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.77 19.77 0 0 1 4.22-5.94' />
+    <path d='M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.77 19.77 0 0 1-2.16 3.19' />
+    <path d='M14.12 14.12a3 3 0 1 1-4.24-4.24' />
+    <line x1='1' y1='1' x2='23' y2='23' />
+  </svg>
+);
+
+const HIDE_DURATION_SECONDS = 10;
+
+async function hideTemporarily() {
+  if (!('__TAURI_INTERNALS__' in window)) return;
+  try {
+    await invoke('peek_away', { seconds: HIDE_DURATION_SECONDS });
+  } catch (error) {
+    console.warn('Peek away failed', error);
+  }
+}
+
 async function startResize() {
   if (!('__TAURI_INTERNALS__' in window)) return;
   try {
@@ -381,6 +401,15 @@ export default function App() {
             onClick={() => updateState({ pinned: !pinned })}
           >
             <PinIcon />
+          </button>
+          <button
+            className='icon-button hide-button'
+            type='button'
+            aria-label='Hide for 10 seconds'
+            title='Peek away (10s)'
+            onClick={() => void hideTemporarily()}
+          >
+            <EyeOffIcon />
           </button>
           <button
             ref={settingsButtonRef}
